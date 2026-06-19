@@ -1,0 +1,104 @@
+# =============================================================================
+# Jal-Prahari — docker-compose.yml
+# =============================================================================
+# Run with:  docker-compose up -d
+# Stop with: docker-compose down
+# Wipe data: docker-compose down -v   ← DESTRUCTIVE
+# =============================================================================
+
+version: '3.8'
+
+# ─── Networks ─────────────────────────────────────────────────────────────────
+# A dedicated bridge network isolates Jal-Prahari containers from other
+# projects running on the same host. Services communicate using container
+# names as hostnames (e.g., host=postgis inside the backend container).
+networks:
+  jal_prahari_net:
+    driver: bridge
+
+# ─── Volumes ──────────────────────────────────────────────────────────────────
+# Named volumes are managed by Docker and survive container restarts.
+# They perform better than bind mounts on Windows/macOS (no filesystem
+# translation layer) and are the recommended approach for database data.
+volumes:
+  postgis_data:
+    name: jal_prahari_postgis_data
+
+# ─── Services ─────────────────────────────────────────────────────────────────
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostGIS (PostgreSQL 15 + PostGIS 3.3)
+  # ---------------------------------------------------------------------------
+  postgis:
+    image: postgis/postgis:15-3.3
+    container_name: jal_prahari_db
+    restart: unless-stopped          # restart on crash but not on explicit stop
+
+    # Read credentials from the .env file (never hardcode passwords)
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB:       ${POSTGRES_DB:-jal_prahari}
+
+    ports:
+      # Expose on the host so psql, pgAdmin, and Python scripts can connect.
+      # In production (Kubernetes), remove the port and use internal DNS only.
+      - "${POSTGRES_PORT:-5432}:5432"
+
+    volumes:
+      # Persist data across container restarts
+      - postgis_data:/var/lib/postgresql/data
+      # SQL/shell scripts placed here are executed automatically on first boot
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+
+    healthcheck:
+      # Dependent services use `condition: service_healthy` to wait until
+      # PostgreSQL is fully ready before attempting to connect.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-jal_prahari}"]
+      interval:     10s
+      timeout:       5s
+      retries:       5
+      start_period: 10s   # grace period before health checks begin
+
+    networks:
+      - jal_prahari_net
+
+  # ---------------------------------------------------------------------------
+  # Backend (FastAPI) — STUB: uncomment when backend Dockerfile is ready
+  # ---------------------------------------------------------------------------
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: jal_prahari_backend
+  #   restart: unless-stopped
+  #   env_file: .env
+  #   environment:
+  #     # Inside Docker, use the service name as the host — not localhost
+  #     POSTGRES_HOST: postgis
+  #   ports:
+  #     - "8000:8000"
+  #   depends_on:
+  #     postgis:
+  #       condition: service_healthy   # waits for the health check to pass
+  #   networks:
+  #     - jal_prahari_net
+
+  # ---------------------------------------------------------------------------
+  # Frontend (React) — STUB: uncomment when frontend Dockerfile is ready
+  # ---------------------------------------------------------------------------
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: jal_prahari_frontend
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3000:80"          # Nginx serves the React build on port 80 inside
+  #   depends_on:
+  #     - backend
+  #   networks:
+  #     - jal_prahari_net

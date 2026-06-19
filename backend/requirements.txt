@@ -1,0 +1,64 @@
+# backend/requirements.txt
+#
+# Pin to the minor version (X.Y.*) for reproducibility across environments.
+# Upgrade deliberately via: pip install --upgrade <package> and re-pin.
+#
+# ─── Core ORM & Database Driver ──────────────────────────────────────────────
+
+# SQLAlchemy 2.x — modern async-ready ORM and Core.
+# The 2.x series introduces typed mapped_column(), improved session management,
+# and first-class async support (asyncpg driver).
+sqlalchemy>=2.0,<3.0
+
+# GeoAlchemy2 — SQLAlchemy extension for PostGIS spatial types.
+# Provides the Geometry column type, WKB/WKT element handling, and
+# automatic spatial index creation.
+geoalchemy2>=0.14,<1.0
+
+# psycopg2-binary — PostgreSQL adapter for Python (pre-compiled wheels).
+# "-binary" bundles libpq, avoiding the need for system-level pg_config /
+# PostgreSQL development headers. Switch to `psycopg2` (compiled from source)
+# in production Docker images for better performance and smaller attack surface.
+psycopg2-binary>=2.9,<3.0
+
+# ─── Environment & Configuration ─────────────────────────────────────────────
+
+# python-dotenv — Loads key=value pairs from a .env file into os.environ.
+# Keeps secrets out of source code and makes the app portable across
+# local, CI, staging, and production environments.
+python-dotenv>=1.0,<2.0
+
+# ─── Future placeholders (uncomment when the relevant service is built) ───────
+# fastapi>=0.111,<1.0
+# uvicorn[standard]>=0.29,<1.0
+# pydantic>=2.7,<3.0
+# alembic>=1.13,<2.0           # Database migration tool (ALTER TABLE support)
+# asyncpg>=0.29,<1.0           # Async PostgreSQL driver (for FastAPI async routes)
+
+# ─── DEM / Geospatial Raster Processing ──────────────────────────────────────
+
+# rasterio — high-level Pythonic interface to GDAL for reading/writing raster
+# formats (GeoTIFF, NetCDF, HDF5, etc.).  Chosen over raw GDAL bindings because:
+#   • Context-manager API guarantees file handle cleanup on exceptions.
+#   • Native NumPy integration for array-level raster operations.
+#   • Windowed reads allow single-pixel access without loading entire rasters.
+#   • Pre-built wheels on PyPI for all platforms (no system GDAL install needed).
+rasterio>=1.3,<2.0
+
+# numpy — fundamental array library for rasterio pixel data.
+# rasterio.read() returns NumPy arrays; elevation values are extracted via
+# standard array indexing (no loops needed for bulk operations).
+numpy>=1.24,<3.0
+
+# pyproj — Python bindings for the PROJ coordinate transformation library.
+# Used to transform sensor WGS84 (EPSG:4326) coordinates into the DEM's
+# native CRS before raster row/column lookup.  Essential for DEMs stored in
+# projected CRS (e.g., UTM Zone 43N for Indian subcontinent datasets).
+pyproj>=3.6,<4.0
+
+# ─── Testing ─────────────────────────────────────────────────────────────────
+
+# pytest — standard Python testing framework.
+# Tests create synthetic GeoTIFF fixtures in-memory so no real DEM download
+# is required for CI.
+pytest>=8.0,<9.0
