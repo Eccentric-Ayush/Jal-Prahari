@@ -28,12 +28,61 @@ psycopg2-binary>=2.9,<3.0
 # local, CI, staging, and production environments.
 python-dotenv>=1.0,<2.0
 
-# ─── Future placeholders (uncomment when the relevant service is built) ───────
-# fastapi>=0.111,<1.0
-# uvicorn[standard]>=0.29,<1.0
-# pydantic>=2.7,<3.0
-# alembic>=1.13,<2.0           # Database migration tool (ALTER TABLE support)
-# asyncpg>=0.29,<1.0           # Async PostgreSQL driver (for FastAPI async routes)
+# ─── Web Framework & API ──────────────────────────────────────────────────────
+
+# FastAPI — high-performance async web framework built on Starlette + Pydantic.
+# Chosen for: automatic OpenAPI spec generation, dependency injection, native
+# async support, and Pydantic v2 integration.  The ingestion endpoint uses
+# async def handlers to avoid blocking the event loop during DB writes.
+fastapi>=0.111,<1.0
+
+# uvicorn[standard] — ASGI server that runs the FastAPI application.
+# The [standard] extras install uvloop (faster event loop) and httptools
+# (faster HTTP parsing), giving ~20% throughput improvement over the base build.
+# In production, run behind Gunicorn: gunicorn -k uvicorn.workers.UvicornWorker
+uvicorn[standard]>=0.29,<1.0
+
+# Pydantic v2 — data validation and serialisation library.
+# The v2 core is rewritten in Rust, providing 5–50x faster validation than v1.
+# Used for TelemetryReadingIn / IngestionResponse models in the ingestion API.
+# Key v2 patterns: model_validate(), model_dump(), ConfigDict(), Field(ge=, le=).
+pydantic>=2.7,<3.0
+
+# httpx — async HTTP client for the sensor simulator and stress tests.
+# Unlike `requests` (sync only), httpx supports asyncio via AsyncClient.
+# Provides connection pooling (Limits) and configurable timeouts out of the box.
+httpx>=0.27,<1.0
+
+# anyio — async compatibility layer; required by httpx and FastAPI test clients.
+anyio>=4.0,<5.0
+
+# numpy — Required for numerical operations in predictive risk heuristics
+# and later ML integration.
+numpy>=1.26.0
+
+# ─── Future placeholders (uncomment when needed) ──────────────────────────────
+# alembic>=1.13,<2.0     # Schema migration tool (ALTER TABLE with rollback support)
+
+# asyncpg — Full async PostgreSQL driver for the CRUD API layer.
+# asyncpg implements the PostgreSQL binary wire protocol natively, without
+# using libpq (the C client library that psycopg2 depends on).  This gives:
+#   • True async I/O — no thread pool wrapper required
+#   • 3–5x faster query execution vs psycopg2 for read-heavy workloads
+#   • Native PostgreSQL type support (JSONB, UUID, arrays, PostGIS binary)
+# Used by: database/session.py → async_sessionmaker → CRUD routes
+asyncpg>=0.29,<1.0
+
+# pydantic-settings — Settings management for Pydantic v2 apps.
+# Extends BaseModel with environment variable and .env file reading.
+# Provides type coercion, validation, and nested config support.
+# Used by: core/config.py → Settings class → get_settings() singleton
+pydantic-settings>=2.0,<3.0
+
+# greenlet — Required by SQLAlchemy async support.
+# SQLAlchemy's async engine uses greenlet internally to bridge the
+# synchronous ORM internals with the asyncio event loop.  This is an
+# implementation detail — applications don't call greenlet directly.
+greenlet>=3.0,<4.0
 
 # ─── DEM / Geospatial Raster Processing ──────────────────────────────────────
 
@@ -62,3 +111,14 @@ pyproj>=3.6,<4.0
 # Tests create synthetic GeoTIFF fixtures in-memory so no real DEM download
 # is required for CI.
 pytest>=8.0,<9.0
+
+# pytest-asyncio — enables async def test functions with pytest.
+# Configuration: add asyncio_mode = "auto" to pytest.ini or pyproject.toml
+# so that all `async def test_*` functions are automatically treated as
+# asyncio tests without requiring @pytest.mark.asyncio on each function.
+pytest-asyncio>=0.23,<1.0
+
+# httpx — async HTTP client; also used for FastAPI async test transport.
+# ASGITransport(app=app) sends requests directly to the ASGI app in-process
+# without a network socket, enabling fast, realistic integration tests.
+# Already added above for production use — listed here for test-role clarity.

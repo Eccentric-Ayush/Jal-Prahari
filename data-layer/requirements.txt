@@ -1,0 +1,39 @@
+# data-layer/requirements.txt
+#
+# Dependencies for the data-layer package (simulator, serializers, tests).
+# This is intentionally separate from backend/requirements.txt because the
+# data-layer must be installable WITHOUT the full FastAPI/SQLAlchemy stack.
+#
+# ─── Dependency explanations ─────────────────────────────────────────────────
+#
+# httpx>=0.27,<1.0
+#   Async HTTP client used by the sensor simulator and stress test to send
+#   POST requests to the ingestion endpoint.  Unlike `requests` (synchronous),
+#   httpx natively supports asyncio coroutines via AsyncClient.  It also
+#   provides connection pooling (Limits) and configurable timeouts out of the
+#   box.  The httpx API is intentionally similar to `requests` to minimise
+#   the learning curve.
+#
+# pydantic>=2.7,<3.0
+#   Used in serializers/schemas.py and serializers/batch_processor.py for
+#   runtime data validation.  Pydantic v2 validates records ~16x faster than
+#   v1 (Rust-compiled core) — critical for pre-validating thousands of records
+#   per second before transmission.  model_validate() and model_dump() replace
+#   the v1 .parse_obj() / .dict() patterns.
+#
+# python-dotenv>=1.0,<2.0
+#   Loads ENDPOINT_URL, N_SENSORS, etc. from a local .env file so the
+#   simulator can be configured without modifying source code.  Keeps secrets
+#   (authentication tokens for production endpoints) out of the codebase.
+#
+# anyio>=4.0,<5.0
+#   Provides async test utilities.  Required by httpx internally.
+#   Also used if stress tests are run with pytest-anyio in the future.
+#
+# ─── Install ─────────────────────────────────────────────────────────────────
+# pip install -r data-layer/requirements.txt
+
+httpx>=0.27,<1.0
+pydantic>=2.7,<3.0
+python-dotenv>=1.0,<2.0
+anyio>=4.0,<5.0

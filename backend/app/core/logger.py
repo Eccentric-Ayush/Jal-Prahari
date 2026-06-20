@@ -53,7 +53,7 @@ _BACKEND_ROOT: Path = Path(__file__).resolve().parents[2]
 LOGS_DIR: Path = _BACKEND_ROOT / "logs"
 
 LOG_FILE_NAME: str   = "dem_parser.log"
-LOG_FILE_PATH: Path  = LOGS_DIR / LOG_FILE_NAME
+LOG_FILE_PATH: Path  = LOGS_DIR / LOG_FILE_NAME  # default; overridable via log_file param
 
 MAX_BYTES: int       = 10 * 1024 * 1024   # 10 MB per file
 BACKUP_COUNT: int    = 5                   # keep 5 rotated files → up to 50 MB history
@@ -73,7 +73,7 @@ DATE_FORMAT: str = "%Y-%m-%dT%H:%M:%S"
 # Factory function
 # ---------------------------------------------------------------------------
 
-def get_logger(name: str, level: int = logging.DEBUG) -> logging.Logger:
+def get_logger(name: str, level: int = logging.DEBUG, log_file: str = LOG_FILE_NAME) -> logging.Logger:
     """
     Return a configured :class:`logging.Logger` instance for *name*.
 
@@ -81,17 +81,22 @@ def get_logger(name: str, level: int = logging.DEBUG) -> logging.Logger:
     ----------
     name : str
         Typically ``__name__`` from the calling module, e.g.
-        ``"app.core.dem_parser"``.
+        ``"app.core.dem_parser"`` or ``"app.api.ingestion"``.
     level : int
         The minimum severity level that this logger will emit.
         Defaults to ``logging.DEBUG`` so that all messages reach the handlers;
         individual handlers are configured with their own level thresholds.
+    log_file : str
+        Name of the log file to write to (relative to the logs/ directory).
+        Defaults to ``"dem_parser.log"`` for backward compatibility.
+        Pass ``"ingestion.log"`` from the ingestion subsystem modules so
+        their log output is routed to a separate, dedicated file.
 
     Returns
     -------
     logging.Logger
         A logger with:
-        - A :class:`RotatingFileHandler` writing to ``logs/dem_parser.log``
+        - A :class:`RotatingFileHandler` writing to ``logs/<log_file>``
           at **DEBUG** level and above.
         - A :class:`StreamHandler` (stdout) writing at **INFO** level and above.
 
@@ -103,13 +108,16 @@ def get_logger(name: str, level: int = logging.DEBUG) -> logging.Logger:
     Examples
     --------
     >>> from app.core.logger import get_logger
-    >>> log = get_logger(__name__)
-    >>> log.info("DEM parser initialised")
-    INFO     app.core.dem_parser — DEM parser initialised
+    >>> log = get_logger(__name__)                          # → logs/dem_parser.log
+    >>> ing = get_logger(__name__, log_file="ingestion.log")  # → logs/ingestion.log
     """
 
     # Ensure the logs directory exists before any handler tries to open the file
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Build the log file path dynamically so each subsystem can write to its
+    # own file (e.g., ingestion.log, dem_parser.log) without interference.
+    log_file_path: Path = LOGS_DIR / log_file
 
     logger = logging.getLogger(name)
 
@@ -121,7 +129,7 @@ def get_logger(name: str, level: int = logging.DEBUG) -> logging.Logger:
 
     # ── Handler 1: Rotating file ─────────────────────────────────────────────
     file_handler = RotatingFileHandler(
-        filename=LOG_FILE_PATH,
+        filename=log_file_path,
         maxBytes=MAX_BYTES,
         backupCount=BACKUP_COUNT,
         encoding="utf-8",
