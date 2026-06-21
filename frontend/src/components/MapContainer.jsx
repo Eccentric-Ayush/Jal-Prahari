@@ -1,12 +1,21 @@
 import React, { useRef, useEffect, useState } from 'react';
 import maplibregl from 'maplibre-gl';
+import { useContext } from 'react';
+import { SensorContext } from '../context/SensorContext';
+import RiskLayer from './RiskLayer';
+import LoadingOverlay from './LoadingOverlay';
 import '../styles/map.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 const MapContainer = () => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
   const [error, setError] = useState(null);
+
+  // Pull globally polled data and dispatch from Context
+  const { riskData, dispatch } = useContext(SensorContext);
+  const { clusters, generated_at, loading, error: apiError } = riskData;
 
   useEffect(() => {
     // 1. Validate MapTiler Key
@@ -26,8 +35,8 @@ const MapContainer = () => {
         style: `https://api.maptiler.com/maps/streets-v2/style.json?key=${maptilerKey}`,
         center: [77.2090, 28.6139], // Centered on Delhi
         zoom: 11, // Close enough to see city detail
-        pitch: 60, // Tilted camera for 3D perspective
-        bearing: -20, // Slightly rotated for cinematic angle
+        pitch: 45,    // Gentle 3D tilt — readable without feeling skewed
+        bearing: 0,   // True north — no rotation
         antialias: true // Essential for smooth 3D geometry rendering
       });
 
@@ -48,6 +57,7 @@ const MapContainer = () => {
         map.setTerrain({ 'source': 'terrain-dem', 'exaggeration': 1.5 });
         
         console.log("Terrain layer activated.");
+        setMapLoaded(true); // Signal that map is ready for dynamic layers
       });
 
       // Handle initialization errors
@@ -73,7 +83,20 @@ const MapContainer = () => {
     return <div className="map-error-fallback">{error}</div>;
   }
 
-  return <div ref={mapContainerRef} className="map-container" />;
+  return (
+    <>
+      <LoadingOverlay loading={loading} error={apiError} clusterCount={clusters?.length || 0} />
+      <div ref={mapContainerRef} className="map-container" />
+      {mapLoaded && mapRef.current && (
+        <RiskLayer 
+          map={mapRef.current} 
+          clusters={clusters} 
+          generatedAt={generated_at} 
+          dispatch={dispatch}
+        />
+      )}
+    </>
+  );
 };
 
 export default MapContainer;
