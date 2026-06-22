@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { SensorContext } from '../context/SensorContext';
 
-const WarningBanner = ({ alert }) => {
+const WarningBanner = ({ alert, generatedAt }) => {
   const { dispatch } = useContext(SensorContext);
 
   // Determine styling based on risk level
@@ -22,7 +22,9 @@ const WarningBanner = ({ alert }) => {
         <h4>Sensor #{alert.sensor_id}</h4>
         <div className="warning-banner-details">
           <span>Risk: {alert.risk_index.toFixed(2)} ({alert.risk_level})</span>
-          <span className="warning-time">{new Date(alert.generated_at).toLocaleTimeString()}</span>
+          <span className="warning-time">
+            {generatedAt ? new Date(generatedAt).toLocaleTimeString() : '—'}
+          </span>
         </div>
       </div>
     </div>

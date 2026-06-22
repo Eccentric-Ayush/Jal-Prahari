@@ -1,5 +1,4 @@
 export const fetchRiskClusters = async (minRisk = 0.0, limit = 100) => {
-  console.log("fetchRiskClusters invoked with minRisk:", minRisk, "limit:", limit);
   try {
     const response = await fetch(`/api/predict/risk?min_risk=${minRisk}&limit=${limit}`);
     

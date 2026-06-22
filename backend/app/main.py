@@ -31,6 +31,7 @@
 # In production: list specific frontend origins to prevent unauthorized
 # cross-origin access to the ingestion API.
 
+import asyncio
 import random
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -41,13 +42,16 @@ from sqlalchemy.orm import Session
 
 from app.api.ingestion import router as ingestion_router
 from app.api.router import api_router
+from app.api.websocket import router as ws_router
 from app.core.config import get_settings
+from app.core.connection_manager import manager as ws_manager
 from app.core.dem_parser import load_dem
 from app.core.logger import get_logger
 from app.database.connection import get_session_factory
 from app.database.init_db import initialise_database
 from app.database.models import Sensor
-from app.database.session import close_async_engine
+from app.database.session import close_async_engine, get_async_session_factory
+from app.services.predictive_engine import PredictiveEngine
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Logger
@@ -186,11 +190,26 @@ async def lifespan(app: FastAPI):
         )
 
     logger.info("Startup complete. API is accepting requests.")
+
+    # Step 4: Start the shared WebSocket broadcast background task
+    # This single task runs predict_cluster_risks() every 5 seconds and
+    # fans the result out to all connected WS clients (see _broadcast_loop below).
+    broadcast_task = asyncio.create_task(_broadcast_loop(app))
+    logger.info("WS broadcast background task started.")
+
     yield
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
     logger.info("Jal-Prahari Backend — Shutting down gracefully.")
-    
+
+    # Cancel the broadcast loop cleanly
+    broadcast_task.cancel()
+    try:
+        await broadcast_task
+    except asyncio.CancelledError:
+        pass
+    logger.info("WS broadcast task stopped.")
+
     if dem_parser is not None:
         dem_parser.close()
         logger.info("DEMParser closed.")
@@ -198,6 +217,70 @@ async def lifespan(app: FastAPI):
     # Dispose the async engine pool to cleanly close asyncpg connections.
     # Without this, asyncpg logs "Task was destroyed but it is pending" warnings.
     await close_async_engine()
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Background WebSocket broadcast loop
+# ─────────────────────────────────────────────────────────────────────────────
+
+_WS_BROADCAST_INTERVAL = 5  # seconds
+
+
+async def _broadcast_loop(app: FastAPI) -> None:
+    """
+    Single shared background task: runs predict_cluster_risks() every 5 seconds
+    and broadcasts the JSON payload to ALL connected WebSocket clients.
+
+    WHY a single shared loop rather than one loop per client:
+        Option A (per-client loop): Each connection spawns its own asyncio task.
+        With N clients, that means N identical DB queries running in parallel
+        every 5 seconds.  Wasteful and doesn't scale.
+
+        Option B (single shared loop, THIS IMPLEMENTATION):
+        One task runs predict_cluster_risks() once per interval, regardless
+        of how many clients are connected.  The result is broadcast to all
+        clients in a single fan-out pass.  1 DB query per cycle, O(N) sends.
+        This is the standard "pub/sub over WebSocket" pattern.
+
+    Graceful shutdown:
+        asyncio.CancelledError is raised in the lifespan shutdown hook via
+        task.cancel().  We catch it and return cleanly without re-raising.
+    """
+    logger.info("WS broadcast loop started (interval=%ds)", _WS_BROADCAST_INTERVAL)
+    try:
+        while True:
+            await asyncio.sleep(_WS_BROADCAST_INTERVAL)
+
+            if ws_manager.active_count == 0:
+                # Skip expensive DB query if no clients are listening.
+                continue
+
+            try:
+                dem_parser = getattr(app.state, "dem_parser", None)
+                session_factory = get_async_session_factory()
+
+                async with session_factory() as session:
+                    engine = PredictiveEngine(session=session, dem_parser=dem_parser)
+                    clusters = await engine.predict_cluster_risks(min_risk=0.0, limit=100)
+
+                payload = {
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                    "cluster_count": len(clusters),
+                    "clusters": [c.model_dump() for c in clusters],
+                }
+
+                await ws_manager.broadcast(payload)
+                logger.info(
+                    "WS broadcast: %d clusters -> %d clients",
+                    len(clusters),
+                    ws_manager.active_count,
+                )
+
+            except Exception as exc:
+                # Log the error but DON'T crash the loop — next cycle continues.
+                logger.error("WS broadcast cycle failed: %s", exc, exc_info=True)
+
+    except asyncio.CancelledError:
+        logger.info("WS broadcast loop cancelled cleanly.")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -262,6 +345,11 @@ app.include_router(ingestion_router)
 # CRUD API router (async engine + AsyncSession)
 # Endpoints: GET /api/sensors | POST /api/logs | GET /api/sensors/{id}/history
 app.include_router(api_router)
+
+# WebSocket router — WS /ws/risk
+# Must be registered on the root app, NOT under the /api prefix,
+# because Vite's proxy will forward /ws/* to the backend separately.
+app.include_router(ws_router)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Health check

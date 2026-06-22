@@ -19,8 +19,6 @@ export const useRiskClusters = (minRisk = 0.0, limit = 100, pollIntervalMs = 500
   }, [minRisk, limit]);
 
   useEffect(() => {
-    console.log("useRiskClusters effect running");
-    
     // Initial fetch
     pollData();
 

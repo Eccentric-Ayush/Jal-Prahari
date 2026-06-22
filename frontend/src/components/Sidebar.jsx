@@ -1,10 +1,10 @@
 import React from 'react';
 import AlertList from './AlertList';
 import SensorDetails from './SensorDetails';
+import ConnectionStatusBadge from './ConnectionStatusBadge';
 import { useSelectedSensor } from '../hooks/useSelectedSensor';
 
 const Sidebar = () => {
-  console.log("Sidebar rendering");
   const { selectedSensor } = useSelectedSensor();
 
   return (
@@ -12,6 +12,7 @@ const Sidebar = () => {
       <div className="sidebar-header">
         <h2>Analytics Panel</h2>
         <p>Urban Flood Monitoring</p>
+        <ConnectionStatusBadge />
       </div>
 
       <div className="sidebar-content">

@@ -205,7 +205,7 @@ def print_schema_summary() -> None:
             logger.info("  Foreign keys:")
             for fk in fks:
                 logger.info(
-                    "    %s → %s.%s",
+                    "    %s -> %s.%s",
                     fk["constrained_columns"],
                     fk["referred_table"],
                     fk["referred_columns"],

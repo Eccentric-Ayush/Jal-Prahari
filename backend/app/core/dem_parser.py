@@ -242,7 +242,7 @@ class DEMParser:
                 always_xy=True,   # (x=lon, y=lat) → (x, y) in target CRS
             )
             log.debug(
-                "Coordinate transformer built: EPSG:4326 → %s", target_crs
+                "Coordinate transformer built: EPSG:4326 -> %s", target_crs
             )
         except CRSError as exc:
             raise ValueError(
@@ -289,8 +289,8 @@ class DEMParser:
         row, col = int(row), int(col)
 
         log.debug(
-            "Coordinate transform │ lat=%.6f lon=%.6f → projected (%.4f, %.4f) "
-            "→ pixel (row=%d, col=%d)",
+            "Coordinate transform | lat=%.6f lon=%.6f -> projected (%.4f, %.4f) "
+            "-> pixel (row=%d, col=%d)",
             latitude, longitude, x, y, row, col,
         )
 
@@ -410,7 +410,7 @@ class DEMParser:
             return float("nan")
 
         log.info(
-            "Elevation result │ lat=%.6f, lon=%.6f → %.4f m",
+            "Elevation result | lat=%.6f, lon=%.6f -> %.4f m",
             latitude, longitude, elevation,
         )
         return elevation

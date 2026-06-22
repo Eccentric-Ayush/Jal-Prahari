@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import WarningBanner from './WarningBanner';
 import { useRiskAlerts } from '../hooks/useRiskAlerts';
+import { SensorContext } from '../context/SensorContext';
 
 const AlertList = () => {
   const alerts = useRiskAlerts();
+  const { riskData } = useContext(SensorContext);
 
   if (alerts.length === 0) return null;
 
@@ -14,7 +16,11 @@ const AlertList = () => {
       </div>
       <div className="alert-list-scroll">
         {alerts.map((alert) => (
-          <WarningBanner key={alert.sensor_id} alert={alert} />
+          <WarningBanner
+            key={alert.sensor_id}
+            alert={alert}
+            generatedAt={riskData?.generated_at}
+          />
         ))}
       </div>
     </div>

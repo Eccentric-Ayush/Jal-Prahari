@@ -124,7 +124,7 @@ async def create_log(
 
     log_response = WaterLogResponse.model_validate(log)
     logger.info(
-        "POST /api/logs → created log id=%d sensor_id=%d.",
+        "POST /api/logs -> created log id=%d sensor_id=%d.",
         log.id,
         log.sensor_id,
     )
@@ -225,7 +225,7 @@ async def get_history(
 
     history_items = [WaterLogResponse.model_validate(log) for log in logs]
     logger.info(
-        "GET /api/sensors/%d/history → page=%d records=%d total=%d.",
+        "GET /api/sensors/%d/history -> page=%d records=%d total=%d.",
         sensor_id,
         page,
         len(history_items),

@@ -147,5 +147,5 @@ async def list_sensors(
         SensorResponse.model_validate(s) for s in sensors
     ]
 
-    logger.info("GET /api/sensors → %d sensors returned.", total)
+    logger.info("GET /api/sensors -> %d sensors returned.", total)
     return SensorListResponse(total=total, sensors=sensor_responses)
