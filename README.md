@@ -4,7 +4,7 @@
 
 The project is built as an end-to-end reference architecture: sensor simulation → ingestion API → PostGIS-backed storage → risk scoring → real-time delivery → map-based visualization.
 
-![Dashboard Preview](frontend/dashboard_screenshot.png)
+![Dashboard Preview](frontend/image.png)
 
 ---
 
