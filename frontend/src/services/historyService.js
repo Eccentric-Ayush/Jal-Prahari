@@ -1,6 +1,7 @@
 export const fetchSensorHistory = async (sensorId, page = 1, pageSize = 50) => {
   try {
-    const response = await fetch(`/api/sensors/${sensorId}/history?page=${page}&page_size=${pageSize}`);
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const response = await fetch(`${baseUrl}/api/sensors/${sensorId}/history?page=${page}&page_size=${pageSize}`);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch sensor history: ${response.status} ${response.statusText}`);

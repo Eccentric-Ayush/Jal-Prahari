@@ -107,17 +107,6 @@ pyproj>=3.6,<4.0
 
 # ─── Testing ─────────────────────────────────────────────────────────────────
 
-# pytest — standard Python testing framework.
-# Tests create synthetic GeoTIFF fixtures in-memory so no real DEM download
-# is required for CI.
-pytest>=8.0,<9.0
-
-# pytest-asyncio — enables async def test functions with pytest.
-# Configuration: add asyncio_mode = "auto" to pytest.ini or pyproject.toml
-# so that all `async def test_*` functions are automatically treated as
-# asyncio tests without requiring @pytest.mark.asyncio on each function.
-pytest-asyncio>=0.23,<1.0
-
 # httpx — async HTTP client; also used for FastAPI async test transport.
 # ASGITransport(app=app) sends requests directly to the ASGI app in-process
 # without a network socket, enabling fast, realistic integration tests.

@@ -26,6 +26,11 @@ import { useRiskClusters } from './useRiskClusters';
 // and directly in production builds.
 const WS_URL = (() => {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  // Use VITE_API_BASE_URL if available (for production cross-domain)
+  const baseUrl = import.meta.env.VITE_API_BASE_URL;
+  if (baseUrl) {
+    return baseUrl.replace(/^http/, 'ws') + '/ws/risk';
+  }
   return `${protocol}//${window.location.host}/ws/risk`;
 })();
 const MAX_RECONNECT_ATTEMPTS = 3;
